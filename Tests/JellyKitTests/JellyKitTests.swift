@@ -3,10 +3,13 @@ import XCTest
 
 final class JellyKitTests: XCTestCase {
     func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(JellyKit().text, "Hello, World!")
+        let expect = expectation(description: "Server Response")
+        let locator = try! ServerLocator()
+        locator.locateServer() { success in
+            print(success)
+            expect.fulfill()
+        }
+        wait(for: [expect], timeout: 120.0)
     }
 
     static var allTests = [
