@@ -8,7 +8,7 @@
 import Foundation
 
 extension API.Models {
-    public struct Item: Decodable, Identifiable, Equatable {
+    public struct Item: Decodable, Identifiable, Equatable, Playable {
         public static func == (lhs: API.Models.Item, rhs: API.Models.Item) -> Bool {
             return lhs.id == rhs.id
         }
@@ -16,6 +16,8 @@ extension API.Models {
         
         public var id: String
         public var name: String
+        public let overview: String?
+        public let year: Int?
         public var genres: [Genre] = []
         public var type: MediaType
         public var people: [Person]?
@@ -35,6 +37,8 @@ extension API.Models {
         enum CodingKeys: String, CodingKey {
             case id = "Id"
             case name = "Name"
+            case overview = "Overview"
+            case year = "ProductionYear"
             case genres = "GenreItems"
             case type = "Type"
             case people = "People"

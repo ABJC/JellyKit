@@ -133,7 +133,7 @@ public class API {
         let params = [
             "Recursive": String(true),
             "IncludeItemTypes": type?.rawValue ?? "Series,Movie",
-            "Fields": "Genres"
+            "Fields": "Genres,Overview"
         ]
         self.get(path, params) { (result) in
             switch result {
@@ -254,6 +254,23 @@ public class API {
             }
         }
     }
+    
+    public func getSeries(_ item_id: String, completion: @escaping Completions.Series) {
+        let path = "/Users/\(currentUser?.id ?? "")/Items/\(item_id)"
+        
+        self.get(path) { (result) in
+            switch result {
+                case .success(let data):
+                    do {
+                        let response = try JSONDecoder().decode(Models.Series.self, from: data)
+                        completion(.success(response))
+                    } catch let error {
+                        completion(.failure(error))
+                    }
+                case .failure(let error): completion(.failure(error))
+            }
+        }
+    }
 
     public func getImages(for item_id: String, completion: @escaping Completions.Images) {
         let path = "/Items/\(item_id)/Images"
@@ -270,6 +287,53 @@ public class API {
             }
         }
     }
+    
+    public func getSeasons(for series_id: String, completion: @escaping Completions.Seasons) {
+        let path = "/Shows/\(series_id)/Seasons"
+        let params = [
+            "userId": self.currentUser?.id ?? "",
+            "IncludeItemTypes": "Season",
+            "SortOrder": "Ascending",
+            "Fields": "Genres,Overview,People,CommunityRating"
+        ]
+        self.get(path, params) { (result) in
+            switch result {
+                case .success(let data):
+                    do {
+                        let response = try JSONDecoder().decode(Responses.ItemResponse<[Models.Season]>.self, from: data)
+                        completion(.success(response.items))
+                    } catch let error {
+                        completion(.failure(error))
+                    }
+                case .failure(let error): completion(.failure(error))
+            }
+        }
+    }
+    
+    public func getEpisodes(for series_id: String, completion: @escaping Completions.Episodes) {
+        let path = "/Shows/\(series_id)/Episodes"
+        let params = [
+            "userId": self.currentUser?.id ?? "",
+            "IncludeItemTypes": "Episode",
+            "SortBy": "PremiereDate",
+            "SortOrder": "Ascending",
+            "Fields": "Genres,Overview,People,CommunityRating"
+        ]
+        self.get(path, params) { (result) in
+            switch result {
+                case .success(let data):
+                    do {
+                        let response = try JSONDecoder().decode(Responses.ItemResponse<[Models.Episode]>.self, from: data)
+                        completion(.success(response.items))
+                    } catch let error {
+                        completion(.failure(error))
+                    }
+                case .failure(let error): completion(.failure(error))
+            }
+        }
+    }
+    
+    
     
     public func searchItems(_ searchTerm: String, completion: @escaping Completions.Items) {
         let path = "/Users/\(currentUser?.id ?? "")/Items"
