@@ -9,6 +9,7 @@ import Foundation
 
 public protocol Playable {
     var id: String { get }
+    var userData: API.Models.UserData { get }
     var type: API.Models.MediaType { get }
 }
 

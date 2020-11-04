@@ -28,7 +28,7 @@ extension API.Models {
         public let criticRating: Int?
         private let communityRating: Double
         
-        public let userData: UserData?
+        public let userData: UserData
         
         enum CodingKeys: String, CodingKey {
             case name = "Name"

@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 public class API {
     public class Models {}
     public class Responses {}

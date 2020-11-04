@@ -36,7 +36,7 @@ extension API.Models {
             }
         }
         
-        public let userData: UserData?
+        public let userData: UserData
         
         enum CodingKeys: String, CodingKey {
             case name = "Name"
