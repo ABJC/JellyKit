@@ -10,6 +10,7 @@ import Foundation
 public class API {
     public class Models {}
     public class Responses {}
+    public class Errors {}
     
     private let scheme: String = "http"
     private let host: String
@@ -24,6 +25,7 @@ public class API {
         self.deviceId = "12345678"
         self.currentUser = user
     }
+    
     
     private func makeRequest(_ path: String, _ params: [String: String?] = [:], _ headers: [String: String] = [:]) -> URLRequest {
         var urlComponents = URLComponents()
@@ -52,12 +54,55 @@ public class API {
                 completion(.failure(error))
             }
             
+            if let httpResponse = response as? HTTPURLResponse {
+                do {
+                    try Errors.ServerError.make(httpResponse.statusCode)
+                } catch let error {
+                    completion(.failure(error))
+                }
+            }
+            
             if let data = data {
                 completion(.success(data))
             }
         }.resume()
     }
     
+    private func post(_ path: String, _ data: Data, _ completion: @escaping Completions.Basic) {
+        var urlComponents = URLComponents()
+        urlComponents.scheme = self.scheme
+        urlComponents.host = self.host
+        urlComponents.port = self.port
+        urlComponents.path = path
+        let url = urlComponents.url!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.allHTTPHeaderFields = [
+            "Content-type": "application/json",
+            "X-Emby-Authorization": "Emby Client=abjc, Device=iOS, DeviceId=\(self.deviceId), Version=1.0.0",
+            "X-Emby-Token": self.currentUser?.token ?? ""
+        ]
+        request.httpBody = data
+        request.timeoutInterval = 15.0
+        
+        URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                if let httpResponse = response as? HTTPURLResponse {
+                    do {
+                        try Errors.ServerError.make(httpResponse.statusCode)
+                    } catch let error {
+                        completion(.failure(error))
+                    }
+                }
+                completion(.success(nil))
+            }
+        }.resume()
+    }
+    
+    
+    //MARK: Authorization
     private func authorizeByName(_ username: String, _ password: String, completion: @escaping Completions.AuthResponse) {
         var urlComponents = URLComponents()
         urlComponents.scheme = self.scheme
@@ -81,6 +126,7 @@ public class API {
                 if let error = error {
                     completion(.failure(error))
                 }
+                
                 if let data = data {
                     do {
                         let response = try JSONDecoder().decode(Responses.AuthResponse.self, from: data)
@@ -101,12 +147,12 @@ public class API {
         }
     }
     
-    
     public func authorize(_ username: String, _ password: String, completion: @escaping Completions.AuthResponse) {
         self.authorizeByName(username, password, completion: completion)
     }
     
     
+    //MARK: System Info
     public func getSystemInfo(completion: @escaping Completions.SystemInfo) {
         let path = "/System/Info"
         self.get(path) { (result) in
@@ -126,7 +172,7 @@ public class API {
     
     
     
-    
+    //MARK: Query Items
     public func getItems(_ type: Models.MediaType? = nil, completion: @escaping Completions.Items) {
         let path = "/emby/Users/\(self.currentUser?.id ?? "")/Items"
         let params = [
@@ -254,14 +300,15 @@ public class API {
         }
     }
     
-    public func getSeries(_ item_id: String, completion: @escaping Completions.Series) {
-        let path = "/Users/\(currentUser?.id ?? "")/Items/\(item_id)"
-        
+    
+    // MARK: Get Images
+    public func getImages(for item_id: String, completion: @escaping Completions.Images) {
+        let path = "/Items/\(item_id)/Images"
         self.get(path) { (result) in
             switch result {
                 case .success(let data):
                     do {
-                        let response = try JSONDecoder().decode(Models.Series.self, from: data)
+                        let response = try JSONDecoder().decode([Models.Image].self, from: data)
                         completion(.success(response))
                     } catch let error {
                         completion(.failure(error))
@@ -270,14 +317,17 @@ public class API {
             }
         }
     }
-
-    public func getImages(for item_id: String, completion: @escaping Completions.Images) {
-        let path = "/Items/\(item_id)/Images"
+    
+    
+    // MARK: Shows (Seasons, Episodes)
+    public func getSeries(_ item_id: String, completion: @escaping Completions.Series) {
+        let path = "/Users/\(currentUser?.id ?? "")/Items/\(item_id)"
+        
         self.get(path) { (result) in
             switch result {
                 case .success(let data):
                     do {
-                        let response = try JSONDecoder().decode([Models.Image].self, from: data)
+                        let response = try JSONDecoder().decode(Models.Series.self, from: data)
                         completion(.success(response))
                     } catch let error {
                         completion(.failure(error))
@@ -334,6 +384,7 @@ public class API {
     
     
     
+    // MARK: Search
     public func searchItems(_ searchTerm: String, completion: @escaping Completions.Items) {
         let path = "/Users/\(currentUser?.id ?? "")/Items"
         let params = [
@@ -379,8 +430,58 @@ public class API {
         }
     }
     
+    // MARK: PlaybackStatus
+    public func startPlayback(for item_id: String, at positionTicks: Int) {
+        let path = "/Sessions/Playing"
+        let info = Models.PlaybackInfo.Start(itemId: item_id, positionTicks: positionTicks)
+        do {
+            let data = try JSONEncoder().encode(info)
+            self.post(path, data) { (result) in
+                switch result {
+                    case .success(_ ): print("SUCCESS")
+                    case .failure(let error): print(error)
+                }
+            }
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    public func reportPlayback(for item_id: String, positionTicks: Int) {
+        let path = "/Sessions/Playing/Progress"
+        let info = Models.PlaybackInfo.Stop(itemId: item_id, positionTicks: positionTicks)
+        do {
+            let data = try JSONEncoder().encode(info)
+            self.post(path, data) { (result) in
+                switch result {
+                    case .success(_ ): print("SUCCESS")
+                    case .failure(let error): print(error)
+                }
+            }
+        } catch let error {
+            print(error)
+        }
+    }
+    
+    public func stopPlayback(for item_id: String, positionTicks: Int) {
+        let path = "/Sessions/Playing/Progress"
+        let info = Models.PlaybackInfo.Stop(itemId: item_id, positionTicks: positionTicks)
+        do {
+            let data = try JSONEncoder().encode(info)
+            self.post(path, data) { (result) in
+                switch result {
+                    case .success(_ ): print("SUCCESS")
+                    case .failure(let error): print(error)
+                }
+            }
+        } catch let error {
+            print(error)
+        }
+    }
     
     
+    
+    // MARK: get URL
     public func getStreamURL(for item_id: String) -> URL {
         let path = "/Videos/\(item_id)/stream"
         let params = [
