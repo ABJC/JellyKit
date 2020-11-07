@@ -21,7 +21,10 @@ extension API.Models {
         
         public let name: String
         
-        public let index: Int
+        public let rawIndex: Int?
+        public var index: Int {
+            return self.rawIndex ?? 0
+        }
         public let seriesId: String
         public let seriesName: String
         
@@ -33,7 +36,7 @@ extension API.Models {
             
             case name = "Name"
             
-            case index = "IndexNumber"
+            case rawIndex = "IndexNumber"
             case seriesId = "SeriesId"
             case seriesName = "SeriesName"
             

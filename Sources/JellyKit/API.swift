@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AVFoundation
 
 public class API {
     public class Models {}
@@ -19,10 +20,10 @@ public class API {
     private let deviceId: String
     private var currentUser: AuthUser?
     
-    public init(_ host: String = "192.168.178.10", _ port: Int = 8096, _ user: AuthUser? = nil) {
-        self.host = host
-        self.port = port
-        self.deviceId = "12345678"
+    public init(_ host: String = "192.168.178.10", _ port: Int = 8096, _ user: AuthUser? = nil, _ deviceID: String? = nil) {
+        self.host = "192.168.178.10" //host
+        self.port = 8096 //port
+        self.deviceId = user?.deviceID ?? deviceID ?? UUID().uuidString
         self.currentUser = user
     }
     
@@ -43,7 +44,7 @@ public class API {
             "X-Emby-Authorization": "Emby Client=abjc, Device=iOS, DeviceId=\(self.deviceId), Version=1.0.0",
             "X-Emby-Token": self.currentUser?.token ?? ""
         ]
-        request.timeoutInterval = 15.0
+        request.timeoutInterval = 60.0
         return request
     }
     
@@ -68,22 +69,35 @@ public class API {
         }.resume()
     }
     
-    private func post(_ path: String, _ data: Data, _ completion: @escaping Completions.Basic) {
+    private func post(_ path: String, _ data: Data? = nil, _ completion: @escaping Completions.Basic) {
         var urlComponents = URLComponents()
         urlComponents.scheme = self.scheme
         urlComponents.host = self.host
         urlComponents.port = self.port
         urlComponents.path = path
-        let url = urlComponents.url!
-        var request = URLRequest(url: url)
+        var request = self.makeRequest(path)
         request.httpMethod = "POST"
-        request.allHTTPHeaderFields = [
-            "Content-type": "application/json",
-            "X-Emby-Authorization": "Emby Client=abjc, Device=iOS, DeviceId=\(self.deviceId), Version=1.0.0",
-            "X-Emby-Token": self.currentUser?.token ?? ""
-        ]
         request.httpBody = data
-        request.timeoutInterval = 15.0
+        
+        URLSession.shared.dataTask(with: request) { (data, response, error) in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                if let httpResponse = response as? HTTPURLResponse {
+                    do {
+                        try Errors.ServerError.make(httpResponse.statusCode)
+                    } catch let error {
+                        completion(.failure(error))
+                    }
+                }
+                completion(.success(nil))
+            }
+        }.resume()
+    }
+    
+    private func delete(_ path: String, _ params: [String: String?], _ data: Data, _ completion: @escaping Completions.Basic) {
+        var request = self.makeRequest(path, params)
+        request.httpMethod = "DELETE"
         
         URLSession.shared.dataTask(with: request) { (data, response, error) in
             if let error = error {
@@ -133,6 +147,7 @@ public class API {
                         self.currentUser = AuthUser(id: response.user.id,
                                                     name: response.user.name,
                                                     serverID: response.serverId,
+                                                    deviceID: self.deviceId,
                                                     token: response.token)
                         completion(.success(response))
                     } catch let error {
@@ -322,8 +337,10 @@ public class API {
     // MARK: Shows (Seasons, Episodes)
     public func getSeries(_ item_id: String, completion: @escaping Completions.Series) {
         let path = "/Users/\(currentUser?.id ?? "")/Items/\(item_id)"
-        
-        self.get(path) { (result) in
+        let params = [
+            "Fields": "Genres,Overview,People,MediaSources"
+        ]
+        self.get(path, params) { (result) in
             switch result {
                 case .success(let data):
                     do {
@@ -366,7 +383,7 @@ public class API {
             "IncludeItemTypes": "Episode",
             "SortBy": "PremiereDate",
             "SortOrder": "Ascending",
-            "Fields": "Genres,Overview,People,CommunityRating"
+            "Fields": "Genres,Overview,People,CommunityRating,MediaSources"
         ]
         self.get(path, params) { (result) in
             switch result {
@@ -438,8 +455,8 @@ public class API {
             let data = try JSONEncoder().encode(info)
             self.post(path, data) { (result) in
                 switch result {
-                    case .success(_ ): print("SUCCESS")
-                    case .failure(let error): print(error)
+                    case .success(_): break
+                    case .failure(_): break
                 }
             }
         } catch let error {
@@ -449,26 +466,37 @@ public class API {
     
     public func reportPlayback(for item_id: String, positionTicks: Int) {
         let path = "/Sessions/Playing/Progress"
-        let info = Models.PlaybackInfo.Stop(itemId: item_id, positionTicks: positionTicks)
+        print("TICKS", positionTicks, positionTicks/1000000)
+        let info = Models.PlaybackInfo.Progress(itemId: item_id, positionTicks: positionTicks)
         do {
             let data = try JSONEncoder().encode(info)
             self.post(path, data) { (result) in
                 switch result {
-                    case .success(_ ): print("SUCCESS")
-                    case .failure(let error): print(error)
+                    case .success(_): break
+                    case .failure(_): break
                 }
             }
         } catch let error {
-            print(error)
+            print("ERROR", error)
         }
     }
     
     public func stopPlayback(for item_id: String, positionTicks: Int) {
-        let path = "/Sessions/Playing/Progress"
+        let path1 = "/Sessions/Playing/Stop"
+        self.post(path1) { (result) in
+            switch result {
+                case .success(_): break
+                case .failure(_): break
+            }
+        }
+        let path = "/Videos/ActiveEncodings"
+        let params = [
+            "DeviceId": self.deviceId
+        ]
         let info = Models.PlaybackInfo.Stop(itemId: item_id, positionTicks: positionTicks)
         do {
             let data = try JSONEncoder().encode(info)
-            self.post(path, data) { (result) in
+            self.delete(path, params, data) { (result) in
                 switch result {
                     case .success(_ ): print("SUCCESS")
                     case .failure(let error): print(error)
@@ -481,16 +509,65 @@ public class API {
     
     
     
-    // MARK: get URL
-    public func getStreamURL(for item_id: String) -> URL {
-        let path = "/Videos/\(item_id)/stream"
+    // MARK: get URLs
+    public func getStreamURL(for item_id: String, _ source_id: String) -> URL {
+//        let path = "/videos/\(item_id)/main.m3u8"
+        let path = "/videos/18f93bce-e588-75f1-5a12-7dc7aa05f041/master.m3u8"
+//        let params = [
+//            "VideoCodec": "h264",
+//            "DeviceId": self.deviceId,
+//            "MediaSourceId": source_id,
+//            "h264-profile": "high"
+//        ]
         let params = [
-            "static": String(true)
+            "DeviceId": self.deviceId,
+            "MediaSourceId": "18f93bcee58875f15a127dc7aa05f041",
+            "VideoCodec": "h264",
+            "AudioCodec": "ac3,mp3,aac",
+            "VideoBitrate": "139680000",
+            "AudioBitrate": "320000",
+            "api_key": "8fd5be7c5b1247b3aad42b884941eac6",
+            "TranscodingMaxAudioChannels": "2",
+            "RequireAvc": "false",
+            "Tag": "c01e1469dd17e2934103b24417a40794",
+            "SegmentContainer": "ts",
+            "MinSegments": "2",
+            "BreakOnNonKeyFrames": "True",
+            "h264-profile": "high,main,baseline,constrainedbaseline",
+            "h264-level": "51",
+            "h264-deinterlace": "true",
+            "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported"
         ]
         let request = self.makeRequest(path, params)
         let url = request.url!
         return url
-        
+    }
+    
+    
+    public func getPlayerItem(for item_id: String, _ source_id: String) -> AVURLAsset {
+        let path = "/videos/\(item_id)/master.m3u8"
+        let params = [
+            "DeviceId": self.deviceId,
+            "MediaSourceId": source_id,
+            "VideoCodec": "h264",
+            "AudioCodec": "ac3,mp3,aac",
+            "VideoBitrate": "139680000",
+            "AudioBitrate": "320000",
+            "TranscodingMaxAudioChannels": "2",
+            "RequireAvc": "false",
+            "SegmentContainer": "ts",
+            "MinSegments": "2",
+            "BreakOnNonKeyFrames": "True",
+            "h264-profile": "high,main,baseline,constrainedbaseline",
+            "h264-level": "51",
+            "h264-deinterlace": "true",
+            "TranscodeReasons": "ContainerNotSupported,VideoCodecNotSupported,AudioCodecNotSupported"
+        ]
+        let request = self.makeRequest(path, params)
+        let url = request.url!
+        let options = ["AVURLAssetHTTPHeaderFieldsKey": request.allHTTPHeaderFields ?? [:]]
+        let item = AVURLAsset(url: url, options: options)
+        return item
     }
     
     public func getImageURL(for id: String, _ type: Models.ImageType = .primary) -> URL {

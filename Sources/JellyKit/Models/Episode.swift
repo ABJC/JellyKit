@@ -18,8 +18,11 @@ extension API.Models {
         public let parentIndex: Int
         
         public let overview: String?
-                
+        
         public let genres: [Genre]?
+        public let mediaSources: [MediaSource]
+        
+        
         private var imageBlurHashes: [String: [String: String]]?
         
         public func blurHash(for imageType: ImageType) -> String? {
@@ -46,14 +49,13 @@ extension API.Models {
             case seasonId = "SeasonId"
             case index = "IndexNumber"
             case parentIndex = "ParentIndexNumber"
+            case mediaSources = "MediaSources"
             
             case imageBlurHashes = "ImageBlurHashes"
             case overview = "Overview"
             case genres = "GenreItems"
             case communityRatingRaw = "CommunityRating"
             case userData = "UserData"
-            
-            
         }
     }
 }

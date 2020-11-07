@@ -24,7 +24,8 @@ extension API.Models {
         
         public let people: [Person]?
         public let genres: [Genre]?
-        
+        public let mediaSources: [MediaSource]
+
         public let criticRating: Int?
         private let communityRating: Double
         
@@ -43,6 +44,7 @@ extension API.Models {
             case year = "ProductionYear"
             case people = "People"
             case genres = "GenreItems"
+            case mediaSources = "MediaSources"
             
             case criticRating = "CriticRating"
             case communityRating = "CommunityRating"

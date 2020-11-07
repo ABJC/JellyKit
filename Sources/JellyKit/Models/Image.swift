@@ -11,7 +11,9 @@ extension API.Models {
     public struct Image: Decodable {
         public let imageType: ImageType
         public let imageIndex: Int?
-        public let imageTag, path, blurHash: String
+        public let imageTag: String?
+        public let path: String
+        public let blurHash: String?
         public let height, width, size: Int
 
         enum CodingKeys: String, CodingKey {

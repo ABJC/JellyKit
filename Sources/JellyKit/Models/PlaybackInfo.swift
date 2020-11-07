@@ -20,9 +20,17 @@ extension API.Models {
         public struct Progress: Codable {
             public let itemId: String
             public let positionTicks: Int
+            public var eventName: Event = .timeUpdate
             enum CodingKeys: String, CodingKey {
                 case itemId = "ItemId"
                 case positionTicks = "PositionTicks"
+                case eventName = "EventName"
+            }
+            
+            public enum Event: String, Codable {
+                case timeUpdate = "TimeUpdate"
+                case pause = "Pause"
+                case unpause = "Unpause"
             }
         }
         

@@ -15,12 +15,14 @@ public class ServerLocator {
         public let port: Int
         public let username: String
         public let password: String
+        public let deviceId: String
         
-        public init(_ host: String, _ port: Int, _ username: String, _ password: String) {
+        public init(_ host: String, _ port: Int, _ username: String, _ password: String, _ deviceId: String = UUID().uuidString) {
             self.host = host
             self.port = port
             self.username = username
             self.password = password
+            self.deviceId = deviceId
         }
     }
     
