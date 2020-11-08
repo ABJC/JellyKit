@@ -14,15 +14,15 @@ public class API {
     public class Errors {}
     
     private let scheme: String = "http"
-    private let host: String
-    private let port: Int
+    public let host: String
+    public let port: Int
     
     private let deviceId: String
     private var currentUser: AuthUser?
     
     public init(_ host: String = "192.168.178.10", _ port: Int = 8096, _ user: AuthUser? = nil, _ deviceID: String? = nil) {
-        self.host = "192.168.178.10" //host
-        self.port = 8096 //port
+        self.host = host
+        self.port = port
         self.deviceId = user?.deviceID ?? deviceID ?? UUID().uuidString
         self.currentUser = user
     }
@@ -163,6 +163,8 @@ public class API {
     }
     
     public func authorize(_ username: String, _ password: String, completion: @escaping Completions.AuthResponse) {
+        print("HOST: ", host, "PORT: ", port)
+        print(username, password)
         self.authorizeByName(username, password, completion: completion)
     }
     
