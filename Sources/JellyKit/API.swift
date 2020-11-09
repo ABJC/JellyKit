@@ -572,9 +572,14 @@ public class API {
         return item
     }
     
-    public func getImageURL(for id: String, _ type: Models.ImageType = .primary) -> URL {
+    public func getImageURL(for id: String, _ type: Models.ImageType = .primary, _ maxWidth: Int = 600) -> URL {
         let path = "/Items/\(id)/Images/\(type.rawValue)"
-        let request = self.makeRequest(path)
+        let params = [
+            "MaxWidth": String(maxWidth),
+            "Format": "jpg",
+            "Quality": String(70)
+        ]
+        let request = self.makeRequest(path, params)
         let url = request.url!
         return url
     }

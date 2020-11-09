@@ -2,7 +2,7 @@ import XCTest
 @testable import JellyKit
 
 final class JellyKitTests: XCTestCase {
-    func testExample() {
+    func testServerLocator() {
         let expect = expectation(description: "Server Response")
         let locator = try! ServerLocator()
         locator.locateServer() { success in
@@ -12,7 +12,7 @@ final class JellyKitTests: XCTestCase {
         wait(for: [expect], timeout: 120.0)
     }
 
-    static var allTests = [
-        ("testExample", testExample),
-    ]
+//    static var allTests = [
+//        ("testExample", testExample),
+//    ]
 }
