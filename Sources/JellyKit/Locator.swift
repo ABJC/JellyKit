@@ -60,7 +60,6 @@ public class ServerLocator {
     public init() {
         func receiveHandler(_ ipAddress: String, _ port: Int, _ response: Data) {
             let utf8String = String(data: response, encoding: .utf8) ?? ""
-            print("UDP connection received from \(ipAddress):\(port):\n\(utf8String)\n")
         }
         
         func errorHandler(error: UDPBroadcastConnection.ConnectionError) {
@@ -87,69 +86,3 @@ public class ServerLocator {
         }
     }
 }
-//
-//extension ServerLocator {
-//    class UDPClient {
-//        var connection: NWConnection
-//        var address: NWEndpoint.Host
-//        var port: NWEndpoint.Port
-//        private var listening = true
-//
-////        var resultHandler = NWConnection.SendCompletion.contentProcessed { NWError in
-////            guard NWError == nil else {
-////                print("ERROR! Error when data (Type: Data) sending. NWError: \n \(NWError!)")
-////                return
-////            }
-////        }
-//
-//        init?(address newAddress: String, port newPort: Int32, listener isListener: Bool = true) {
-//            guard let codedAddress = IPv4Address(newAddress),
-//                let codedPort = NWEndpoint.Port(rawValue: NWEndpoint.Port.RawValue(newPort)) else {
-//                    print("Failed to create connection address")
-//                    return nil
-//            }
-//            address = .ipv4(codedAddress)
-//            port = codedPort
-//            listening = isListener
-//            connection = NWConnection(host: address, port: port, using: .udp)
-//
-//            connect()
-//        }
-//
-//        func connect() {
-//            connection.stateUpdateHandler = { newState in
-//                switch (newState) {
-//                case .ready:
-//                    print("State: Ready")
-//                    if self.listening { self.listen() }
-//                case .setup:
-//                    print("State: Setup")
-//                case .cancelled:
-//                    print("State: Cancelled")
-//                case .preparing:
-//                    print("State: Preparing")
-//                default:
-//                    print("ERROR! State not defined!\n")
-//                }
-//            }
-//            connection.start(queue: .global())
-//        }
-//
-//        func send(_ data: Data) {
-//            connection.send(content: data, completion: resultHandler)
-//        }
-//
-//        private func listen() {
-//            while listening {
-//                connection.receiveMessage { data, context, isComplete, error in
-//                    print("Receive isComplete: " + isComplete.description)
-//                    guard let data = data else {
-//                        print("Error: Received nil Data")
-//                        return
-//                    }
-//                    print("Data Received")
-//                }
-//            }
-//        }
-//    }
-//}
